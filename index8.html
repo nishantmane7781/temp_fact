@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <!-- Google Fonts Link For Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Outlined">
+    <link rel="stylesheet" href="./main.css">
+    <style>
+    .resizer {
+            position: absolute;
+            z-index: 10;
+        }
+        .resizer.top {
+            top: -5px;
+            left: 0;
+            right: 0;
+            height: 10px;
+            cursor: ns-resize;
+        }
+        .resizer.right {
+            top: 0;
+            right: -5px;
+            bottom: 0;
+            width: 10px;
+            cursor: ew-resize;
+        }
+        .resizer.bottom {
+            left: 0;
+            right: 0;
+            bottom: -5px;
+            height: 10px;
+            cursor: ns-resize;
+        }
+        .resizer.left {
+            top: 0;
+            left: -5px;
+            bottom: 0;
+            width: 10px;
+            cursor: ew-resize;
+        }
+    </style>
+</head>
+
+<body>
+    <button class="chatbot-toggler">
+        <span class="material-symbols-rounded">mode_comment</span>
+        <span class="material-symbols-outlined">close</span>
+    </button>
+    <div class="chatbot">
+        <div class="resizer top"></div>
+        <div class="resizer right"></div>
+        <div class="resizer bottom"></div>
+        <div class="resizer left"></div>
+        <header>
+            <h4>Chatbot</h4>
+            <div class="icon-container">
+                <span class="collapse-icon material-icons-outlined" data-tooltip="Maximize Chatbot">fullscreen</span>
+                <span class="expand-icon material-icons-outlined hide" data-tooltip="Expand/Collapse Chatbot">fullscreen_exit</span>
+            </div>
+        </header>
+        <ul class="chatbox">
+            <li class="chat incoming">
+                <div class="initial-chat">
+                    <span class="material-symbols-outlined">smart_toy</span>
+                    <p>Hi there 👋<br>How can I help you today?</p>
+                </div>
+                <div class="icon-container">
+                    <div class="copy-btn-container">
+                       
+                    </div>
+                </div>
+            </li>
+        </ul>
+        <div class="chat-input">
+            <textarea placeholder="Enter a message..." spellcheck="false" required></textarea>
+            <span id="send-btn" class="material-symbols-rounded">send</span>
+        </div>
+       
+    </div>
+    <script>
+        const chatbotToggler = document.querySelector(".chatbot-toggler");
+        const chatbot = document.querySelector(".chatbot");
+        const chatbox = document.querySelector(".chatbox");
+        const chatInput = document.querySelector(".chat-input textarea");
+        const sendChatBtn = document.querySelector(".chat-input span");
+        const expandIcon = document.querySelector(".expand-icon");
+        const collapseIcon = document.querySelector(".collapse-icon");
+
+        let userMessage = null; // Variable to store user's message
+        const inputInitHeight = chatInput.scrollHeight;
+
+        const createChatLi = (message, className, isResponse = false) => {
+            // Create a chat <li> element with passed message and className
+            const chatLi = document.createElement("li");
+            chatLi.classList.add("chat", className);
+
+            // Create initial-chat div
+            const initialChatDiv = document.createElement("div");
+            initialChatDiv.classList.add("initial-chat");
+
+            // Create icon and p elements for initial chat
+            if (className === "incoming") {
+                const iconSpan = document.createElement("span");
+                iconSpan.classList.add("material-symbols-outlined");
+                iconSpan.textContent = "smart_toy";
+                initialChatDiv.appendChild(iconSpan);
+            }
+
+            const pElement = document.createElement("p");
+            initialChatDiv.appendChild(pElement);
+            chatLi.appendChild(initialChatDiv);
+
+            // Add icon-container div for incoming messages (API responses)
+            if (className === "incoming" && isResponse) {
+                const iconContainer = document.createElement("div");
+                iconContainer.classList.add("icon-container");
+                chatLi.appendChild(iconContainer);
+            }
+
+            pElement.innerHTML = message;
+            return chatLi; // return chat <li> element
+        }
+
+        const createTypingIndicator = () => {
+            const typingIndicator = document.createElement("div");
+            typingIndicator.classList.add("typing-indicator");
+            typingIndicator.innerHTML = `<span></span><span></span><span></span>`;
+            return typingIndicator;
+        }
+
+        const parseAndFormatMessage = (message) => {
+            // Replace text between ** with bolded text
+            return message.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        }
+
+        const generateResponse = (chatElement) => {
+            const API_URL = "/software/csws/apidoc/v1/query";
+            const messageElement = chatElement.querySelector("p");
+
+            // Define the properties and message for the API request
+            const requestOptions = {
+                method: "POST",
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    query: userMessage
+                })
+            }
+
+            // Send POST request to API, get response and set the response as paragraph text
+            fetch(API_URL, requestOptions).then(res => res.json()).then(data => {
+                let responseMessage = data.message.trim();
+                responseMessage = parseAndFormatMessage(responseMessage);
+                simulateTypingEffect(messageElement, responseMessage, chatElement);
+            }).catch(() => {
+                const errorMessage = "**Oops!** Something went wrong.";
+                const formattedErrorMessage = parseAndFormatMessage(errorMessage);
+                messageElement.classList.add("error");
+                simulateTypingEffect(messageElement, formattedErrorMessage, chatElement);
+            }).finally(() => chatbox.scrollTo(0, chatbox.scrollHeight));
+        }
+
+        const simulateTypingEffect = (element, message, chatElement) => {
+            element.innerHTML = ''; // Clear previous content
+            let i = 0;
+            const typingSpeed = 10; // Adjust typing speed (in milliseconds)
+
+            const typeCharacter = () => {
+                if (i < message.length) {
+                    if (message.slice(i, i + 8) === "<strong>") {
+                        // Handle opening strong tag
+                        const endIndex = message.indexOf("</strong>", i);
+                        element.innerHTML += message.slice(i, endIndex + 9);
+                        i = endIndex + 9;
+                    } else {
+                        // Handle regular characters
+                        element.innerHTML += message.charAt(i);
+                        i++;
+                    }
+                    setTimeout(typeCharacter, typingSpeed);
+                } else {
+                    // Show the copy button container after typing effect is done
+                    const copyBtnContainer = chatElement.querySelector(".icon-container");
+                    const copyBtn = document.createElement("button");
+                    copyBtn.classList.add("copy-btn", "material-icons-outlined");
+                    copyBtn.textContent = "content_copy";
+                    const copyBtnText = document.createElement("span");
+                    copyBtnText.classList.add("copy-btn-text");
+                    copyBtnText.textContent = "Copy text";
+                    const copyBtnContainerDiv = document.createElement("div");
+                    copyBtnContainerDiv.classList.add("copy-btn-container");
+                    copyBtnContainerDiv.appendChild(copyBtn);
+                    copyBtnContainerDiv.appendChild(copyBtnText);
+                    copyBtnContainer.appendChild(copyBtnContainerDiv);
+                    addCopyFunctionality(copyBtn, element.innerText, copyBtnText);
+                }
+            }
+
+            typeCharacter();
+        }
+
+        const addCopyFunctionality = (copyButton, message, copyBtnText) => {
+            copyButton.addEventListener("click", () => {
+                navigator.clipboard.writeText(message).then(() => {
+                    copyButton.innerHTML = "check";
+                    copyBtnText.textContent = "Copied";
+                    setTimeout(() => {
+                        copyButton.innerHTML = "content_copy";
+                        copyBtnText.textContent = "Copy text";
+                    }, 2000);
+                }).catch(err => {
+                    console.error("Failed to copy text: ", err);
+                });
+            });
+        }
+
+        chatInput.addEventListener("input", () => {
+            // Adjust the height of the input textarea based on its content
+            chatInput.style.height = `${inputInitHeight}px`;
+            chatInput.style.height = `${chatInput.scrollHeight}px`;
+        });
+
+        chatInput.addEventListener("keydown", (e) => {
+            // If Enter key is pressed without Shift key and the window width is greater than 800px
+            if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 800) {
+                e.preventDefault();
+                sendChatBtn.click();
+            }
+        });
+
+        sendChatBtn.addEventListener("click", () => {
+            // User message
+            userMessage = chatInput.value.trim();
+            if (!userMessage) return;
+
+            // Clear the input textarea
+            chatInput.value = "";
+            chatInput.style.height = `${inputInitHeight}px`;
+
+            // Append the user's message to the chatbox
+            chatbox.appendChild(createChatLi(userMessage, "outgoing"));
+            chatbox.scrollTo(0, chatbox.scrollHeight);
+
+            // Display typing indicator
+            const typingIndicator = createTypingIndicator();
+            chatbox.appendChild(typingIndicator);
+            chatbox.scrollTo(0, chatbox.scrollHeight);
+
+            // Generate response and remove typing indicator
+            setTimeout(() => {
+                chatbox.removeChild(typingIndicator);
+                const incomingChatLi = createChatLi("Thinking...", "incoming", true);
+                chatbox.appendChild(incomingChatLi);
+                chatbox.scrollTo(0, chatbox.scrollHeight);
+                generateResponse(incomingChatLi);
+            }, 1000);
+        });
+
+        let flager = true;
+        chatbotToggler.addEventListener("click", () => {
+            flager = !flager;
+            document.body.classList.toggle("show-chatbot");
+            window.parent.postMessage({ flag: !flager }, '*');
+            chatbot.classList.remove("maximized");
+            expandIcon.classList.add("hide");
+            collapseIcon.classList.remove("hide");
+
+            if (!document.body.classList.contains('show-chatbot')) {
+            resetToOriginalSize();
+        }
+        });
+
+        expandIcon.addEventListener("click", () => {
+            chatbot.classList.remove("maximized");
+            expandIcon.classList.add("hide");
+            collapseIcon.classList.remove("hide");
+        });
+
+        collapseIcon.addEventListener("click", () => {
+            chatbot.classList.add("maximized");
+            expandIcon.classList.remove("hide");
+            collapseIcon.classList.add("hide");
+        });
+
+        let isMaximized = false;
+        const initialWidth = chatbot.offsetWidth;
+        const initialHeight = chatbot.offsetHeight;
+        // Resizer functionality setup
+ 
+
+// Resizer functionality setup
+const resizers = document.querySelectorAll('.resizer'); // Ensure this matches your resizer class
+
+if (resizers) {
+    resizers.forEach(resizer => {
+        handleResize(resizer);
+    });
+} else {
+    console.error('Resizers not found. Please check the resizer class in your HTML.');
+}
+
+// Toggle chatbot visibility
+toggleButton.addEventListener('click', () => {
+    if (document.body.classList.contains('show-chatbot')) {
+        document.body.classList.remove('show-chatbot');
+    } else {
+        resetToOriginalSize(); // Reset to original size before showing
+        document.body.classList.add('show-chatbot');
+    }
+});
+
+// Toggle maximized state
+maximizeButton.addEventListener('click', () => {
+    isMaximized = !isMaximized;
+    chatbot.classList.toggle('maximized', isMaximized);
+});
+
+collapseButton.addEventListener('click', () => {
+    isMaximized = false;
+    chatbot.classList.remove('maximized');
+});
+
+function handleResize(resizer) {
+    resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+
+        // Get initial measurements and position
+        const initialWidth = chatbot.offsetWidth;
+        const initialHeight = chatbot.offsetHeight;
+        const initialX = e.clientX;
+        const initialY = e.clientY;
+        const initialLeft = chatbot.getBoundingClientRect().left;
+
+        // Ensure the chatbot's position is absolute
+        chatbot.style.position = 'absolute';
+
+        // Remove the maximized class if it exists to allow free resizing
+        if (isMaximized) {
+            chatbot.classList.remove('maximized');
+            isMaximized = false;
+        }
+
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('mouseup', stopResize);
+
+        function resize(event) {
+            if (resizer.classList.contains('right')) {
+                // Resizing from the right
+                const newWidth = initialWidth + (event.clientX - initialX);
+                chatbot.style.width = `${newWidth}px`;
+            } else if (resizer.classList.contains('left')) {
+                // Resizing from the left
+                const newWidth = initialWidth - (event.clientX - initialX);
+                const newLeft = initialLeft + (event.clientX - initialX);
+
+                if (newWidth > 100) { // Prevent the width from getting too small
+                    chatbot.style.width = `${newWidth}px`;
+                    chatbot.style.left = `${newLeft}px`;
+                }
+            } else if (resizer.classList.contains('bottom')) {
+                // Resizing from the bottom
+                const newHeight = initialHeight + (event.clientY - initialY);
+                chatbot.style.height = `${newHeight}px`;
+            } else if (resizer.classList.contains('top')) {
+                // Resizing from the top
+                const newHeight = initialHeight - (event.clientY - initialY);
+                if (newHeight > 100) { // Prevent the height from getting too small
+                    chatbot.style.height = `${newHeight}px`;
+                }
+            }
+        }
+
+        function stopResize() {
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', stopResize);
+        }
+    });
+}
+
+// Reset the chatbot to its original size
+function resetToOriginalSize() {
+    chatbot.style.width = `${initialWidth}px`;
+    chatbot.style.height = `${initialHeight}px`;
+    // Optionally reset the left and top position if necessary
+    chatbot.style.left = ''; // Clear left style
+    chatbot.style.right = '35px'; // Reset right position (if needed)
+    chatbot.style.bottom = '90px'; // Reset bottom position (if needed)
+}
+      
+// Listen for resizing messages from the parent
+window.addEventListener('message', (event) => {
+        if (event.data.resizing === true) {
+            // You could add visual feedback for resizing, if needed
+        } else if (event.data.resizing === false) {
+            // End of resizing feedback
+        }
+    });
+
+    function resizeChatbot() {
+            const chatbotElement = document.querySelector('.chatbot');
+            const chatbotRect = chatbotElement.getBoundingClientRect();
+            const messageData = {
+                resizing: true,
+                width: chatbotRect.width,
+                height: chatbotRect.height
+            };
+            parent.postMessage(messageData, '*');
+        }
+
+       
+    
+        // Example: Call resize function when chatbot size changes
+        window.addEventListener('resize', resizeChatbot);
+        document.addEventListener('DOMContentLoaded', resizeChatbot); 
+    </script>
+</body>
+
+</html>
