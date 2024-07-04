@@ -17,20 +17,9 @@
             height: 10px;
             cursor: ns-resize;
         }
-        .resizer.right {
-            top: 0;
-            right: -5px;
-            bottom: 0;
-            width: 10px;
-            cursor: ew-resize;
-        }
-        .resizer.bottom {
-            left: 0;
-            right: 0;
-            bottom: -5px;
-            height: 10px;
-            cursor: ns-resize;
-        }
+        .resizer.right, .resizer.bottom {
+    display: none;
+       }
         .resizer.left {
             top: 0;
             left: -5px;
@@ -48,8 +37,6 @@
     </button>
     <div class="chatbot">
         <div class="resizer top"></div>
-        <div class="resizer right"></div>
-        <div class="resizer bottom"></div>
         <div class="resizer left"></div>
         <header>
             <h4>Chatbot</h4>
@@ -332,6 +319,8 @@ function handleResize(resizer) {
         const initialX = e.clientX;
         const initialY = e.clientY;
         const initialLeft = chatbot.getBoundingClientRect().left;
+        const minWidth = 580; // Minimum width in pixels
+        const minHeight = 400; // Minimum height in pixels
 
         // Ensure the chatbot's position is absolute
         chatbot.style.position = 'absolute';
@@ -346,27 +335,24 @@ function handleResize(resizer) {
         document.addEventListener('mouseup', stopResize);
 
         function resize(event) {
-            if (resizer.classList.contains('right')) {
-                // Resizing from the right
-                const newWidth = initialWidth + (event.clientX - initialX);
-                chatbot.style.width = `${newWidth}px`;
-            } else if (resizer.classList.contains('left')) {
+            if (resizer.classList.contains('left')) {
                 // Resizing from the left
                 const newWidth = initialWidth - (event.clientX - initialX);
                 const newLeft = initialLeft + (event.clientX - initialX);
-
-                if (newWidth > 100) { // Prevent the width from getting too small
+                if (newWidth >= minWidth) {
                     chatbot.style.width = `${newWidth}px`;
                     chatbot.style.left = `${newLeft}px`;
                 }
             } else if (resizer.classList.contains('bottom')) {
                 // Resizing from the bottom
                 const newHeight = initialHeight + (event.clientY - initialY);
-                chatbot.style.height = `${newHeight}px`;
+                if (newHeight >= minHeight) {
+                    chatbot.style.height = `${newHeight}px`;
+                }
             } else if (resizer.classList.contains('top')) {
                 // Resizing from the top
                 const newHeight = initialHeight - (event.clientY - initialY);
-                if (newHeight > 100) { // Prevent the height from getting too small
+                if (newHeight >= minHeight) {
                     chatbot.style.height = `${newHeight}px`;
                 }
             }
@@ -379,6 +365,7 @@ function handleResize(resizer) {
     });
 }
 
+
 // Reset the chatbot to its original size
 function resetToOriginalSize() {
     chatbot.style.width = `${initialWidth}px`;
@@ -389,31 +376,7 @@ function resetToOriginalSize() {
     chatbot.style.bottom = '90px'; // Reset bottom position (if needed)
 }
       
-// Listen for resizing messages from the parent
-window.addEventListener('message', (event) => {
-        if (event.data.resizing === true) {
-            // You could add visual feedback for resizing, if needed
-        } else if (event.data.resizing === false) {
-            // End of resizing feedback
-        }
-    });
 
-    function resizeChatbot() {
-            const chatbotElement = document.querySelector('.chatbot');
-            const chatbotRect = chatbotElement.getBoundingClientRect();
-            const messageData = {
-                resizing: true,
-                width: chatbotRect.width,
-                height: chatbotRect.height
-            };
-            parent.postMessage(messageData, '*');
-        }
-
-       
-    
-        // Example: Call resize function when chatbot size changes
-        window.addEventListener('resize', resizeChatbot);
-        document.addEventListener('DOMContentLoaded', resizeChatbot); 
     </script>
 </body>
 
