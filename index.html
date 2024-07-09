@@ -12,3 +12,48 @@ const daster=data;
                     iframe.style.height = height+150 + 'px';
                 }
             }
+-----------------------------------------------------------------------
+function myFunction() {
+            document.getElementById("demo").innerHTML = "Hello World";
+        }
+         // Get the iframe element
+         const iframe = document.getElementById('chatbotFrame');
+
+
+        function handleMessage(event) {
+            
+            const data = event.data    
+            
+                iframe.classList.remove('full-width');
+                iframe.classList.remove('normal-width');
+                iframe.classList.add('toggle-width');
+           
+          
+            if(data.expandWidth=="full-width" && data.sizeFlags==true){
+                iframe.classList.remove('normal-width');
+                iframe.classList.remove('toggle-width');
+                iframe.classList.add('full-width');
+
+
+            }if(data.expandWidth=="toggle-width" && data.sizeFlags==true){
+                iframe.classList.remove('normal-width');
+                iframe.classList.remove('full-width');
+                iframe.classList.add('toggle-width');
+            }
+            const daster=data;
+            if (daster && daster.liveDimentions) {
+                const { width, height } = daster.liveDimentions;
+                iframe.classList.remove('normal-width');
+                iframe.classList.add('toggle-width');
+                iframe.classList.remove('full-width');
+                // Log the width and height received
+                console.log("Received dimensions - Width:", width, "Height:", height);
+
+                // Apply the dimensions to the iframe
+                if (width && height) {
+                    iframe.style.width = width+100 + 'px';
+                    iframe.style.height = height+150 + 'px';
+                }
+            }
+
+        }
