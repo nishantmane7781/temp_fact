@@ -1,19 +1,4 @@
-const daster=data;
-            if (daster && daster.liveDimentions) {
-                const { width, height } = daster.liveDimentions;
-                iframe.classList.remove('normal-width');
-                iframe.classList.add('full-width');
-                // Log the width and height received
-                console.log("Received dimensions - Width:", width, "Height:", height);
-
-                // Apply the dimensions to the iframe
-                if (width && height) {
-                    iframe.style.width = width+100 + 'px';
-                    iframe.style.height = height+150 + 'px';
-                }
-            }
------------------------------------------------------------------------
-function myFunction() {
+  function myFunction() {
             document.getElementById("demo").innerHTML = "Hello World";
         }
          // Get the iframe element
@@ -57,3 +42,5 @@ function myFunction() {
             }
 
         }
+        window.addEventListener('message', handleMessage);
+       
