@@ -1,46 +1,642 @@
-  function myFunction() {
-            document.getElementById("demo").innerHTML = "Hello World";
-        }
-         // Get the iframe element
-         const iframe = document.getElementById('chatbotFrame');
+// ** React Imports
+import { forwardRef, useState,useRef ,useEffect} from 'react'
+
+// ** MUI Imports
+import Card from '@mui/material/Card'
+import Grid from '@mui/material/Grid'
+import Button from '@mui/material/Button'
+import Divider from '@mui/material/Divider'
+import MenuItem from '@mui/material/MenuItem'
+import TextField from '@mui/material/TextField'
+import CardHeader from '@mui/material/CardHeader'
+import InputLabel from '@mui/material/InputLabel'
+import FormControl from '@mui/material/FormControl'
+import Typography from '@mui/material/Typography'
+import CardContent from '@mui/material/CardContent'
+import CardActions from '@mui/material/CardActions'
+import OutlinedInput from '@mui/material/OutlinedInput'
+import InputAdornment from '@mui/material/InputAdornment'
+import Select from '@mui/material/Select';
+import Chip from '@mui/material/Chip';
+import LinearProgress from '@mui/material/LinearProgress'; // Import LinearProgress
+import Box from '@mui/material/Box';
+import TableContainer from '@mui/material/TableContainer'
+import { useTheme } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
+import Backdrop from '@mui/material/Backdrop';
+import IconButton from '@mui/material/IconButton'
+import { Stack } from '@mui/material'
 
 
-        function handleMessage(event) {
-            
-            const data = event.data    
-            
-                iframe.classList.remove('full-width');
-                iframe.classList.remove('normal-width');
-                iframe.classList.add('toggle-width');
-           
+const CustomInput = forwardRef((props, ref) => {
+  return <TextField fullWidth {...props} inputRef={ref} label='Birth Date' autoComplete='off' />
+})
+
+
+const StickyHeaderCard = styled(Card)({
+  overflowY: 'auto',
+  position: 'relative',
+});
+
+const StickyHeader = styled(CardHeader)({
+  //position: 'sticky',
+  top: 0,
+  zIndex: 1000, // Adjust the z-index as needed
+ 
+});
+
+const StickyTableCell = styled(TableCell)({
+  position: 'sticky',
+  left: 0,
+  zIndex: 1000, // Adjust the z-index as needed
+ 
+});
+const TechBox = styled(Box)({
+  display: 'inline-block',
+  padding: '4px 8px', // Adjust padding as needed
+  marginRight: '8px', // Adjust margin as needed
+  border: '1px solid #ccc', // Add border
+  borderRadius: '4px', // Add border radius
+});
+ const handleMouseDownPassword = event => {
+  event.preventDefault()
+}
+
+// toast message 
+const CustomSnackbar = ({ open, message, onClose }) => {
+  return (
+    <Snackbar
+      open={open}
+      autoHideDuration={600000}
+      onClose={onClose}
+      anchorOrigin={{ vertical: 'center', horizontal: 'center' }} // Align Snackbar to the center
+     
+      style={{ position: 'fixed', 
+      top: '50%', left: '50%',
+      transform: 'translate(-50%, -50%)',
+      backdropFilter: 'blur(8px)',
+      height:'100px',
+      fontSize:'30px' }} // Center the Snackbar
+    >
+      <MuiAlert
+        onClose={onClose}
+        severity="success"
+        sx={{
+          width: 'fit-content',
+          backgroundColor: 'rgba(255, 255, 255, 0.8)', // Set translucent white background color
+          color: 'black', // Set black text color
+          borderRadius: '8px', // Add border radius
+
+        }}
+      >
+        {message}
+      </MuiAlert>
+
+    </Snackbar>
+  );
+};
+
+{/**---- model form */}
+const CustomModel= ({onClose,setLoading,formData,setSelectedOptions,
+  setSnackbarMessage,setSnackbarOpen,fetchRowData,projectNameRef,
+  projectDescriptionRef,gitHubRepoRef,setUrls})=>{
+
+    const username = useRef(null);
+    const pass = useRef(null);
+
+  const handleCloser=async()=>{
+      const userdata={
+      username:username.current.value,
+      pass:pass.current.value,
+    };
+
+    setLoading(true);
+
+    try{
+        //const rse=await fetch("http://localhost:8080/submit_credentials",{
+        const rse=await fetch("/software/csws/rag/submit_credentials",{
+        method:'POST',
+        headers:{
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify(userdata),
+      });
+    }catch(error){
+      console.log("Error while sending form data ",error)
+    }
+
+    onClose();
+
+    ///---------------------------------------------------------------
+    try{
+      //const response=await fetch("http://localhost:8080/clone",{
+      const response=await fetch("/software/csws/rag/clone",{
+      method:'POST',
+        headers:{
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify(formData),
+      });
+  
+
+    const res=await response.json();
+
+    projectNameRef.current.value = '';
+    projectDescriptionRef.current.value = '';
+    gitHubRepoRef.current.value = '';
+    setSelectedOptions([]);
+    setUrls([])
+    setSnackbarMessage(res.message);
+    setSnackbarOpen(true);
+    fetchRowData();
+
+    setTimeout(() => {
+    window.location.href = '/software/ragbot/';
+    },5000); 
+      }catch(error){
+        //console.log("error on creating project",error);
+          projectNameRef.current.value = '';
+          projectDescriptionRef.current.value = '';
+          gitHubRepoRef.current.value = '';
+          setSelectedOptions([]);
+          //alert(res.message);
+          setUrls([]);
+          setSnackbarMessage(`Unable to reach backend : - ${error}`);
+          setSnackbarOpen(true);
+      }finally{
+        setLoading(false); 
+      }
+  }
+  return(
+   
+    <Box className='customeModel-open content-center'
+    sx={{
+      position:"absolute",
+      top:'50%',
+      left:'50%',
+      transform:'translate(-50%,-50%)'  
+        }}>
+    <Card sx={{ zIndex: 1 }}>
+      <CardContent sx={{ padding: theme => `${theme.spacing(10, 9, 3)} !important` }}>
+        
+        <Box sx={{ mb: 3,display:"flex",justifyContent:"space-between"}}>
           
-            if(data.expandWidth=="full-width" && data.sizeFlags==true){
-                iframe.classList.remove('normal-width');
-                iframe.classList.remove('toggle-width');
-                iframe.classList.add('full-width');
+          <Typography variant='body4'>Enter code-repository details </Typography>
+          <Typography 
+          sx={{ 
+          fontWeight:"bold",
+          width:"auto",
+          color:"#ff85adde",
+          cursor:"pointer",
+          }} onClick={(e)=>onClose()}> X </Typography>
+        </Box>
+        <form autoComplete='off' onSubmit={e => e.preventDefault()}>
+          <TextField autoFocus 
+          fullWidth id='uname' 
+          label='Username' 
+          sx={{ marginBottom: 4 }}
+          inputRef={username}
+          required/>
 
-
-            }if(data.expandWidth=="toggle-width" && data.sizeFlags==true){
-                iframe.classList.remove('normal-width');
-                iframe.classList.remove('full-width');
-                iframe.classList.add('toggle-width');
-            }
-            const daster=data;
-            if (daster && daster.liveDimentions) {
-                const { width, height } = daster.liveDimentions;
-                iframe.classList.remove('normal-width');
-                iframe.classList.add('toggle-width');
-                iframe.classList.remove('full-width');
-                // Log the width and height received
-                console.log("Received dimensions - Width:", width, "Height:", height);
-
-                // Apply the dimensions to the iframe
-                if (width && height) {
-                    iframe.style.width = width+100 + 'px';
-                    iframe.style.height = height+150 + 'px';
+           <FormControl fullWidth sx={{ marginBottom: 4 }}>
+              <InputLabel htmlFor='auth-login-password' >Password</InputLabel>
+              <OutlinedInput
+                label='Password'
+                id='auth-login-password'
+                type='password'
+                inputRef={pass}
+                endAdornment={
+                  <InputAdornment position='end'>
+                    <IconButton
+                      edge='end'
+                      onMouseDown={handleMouseDownPassword}
+                      aria-label='toggle password visibility'
+                    >
+                    </IconButton>
+                  </InputAdornment>
                 }
-            }
+              />
+            </FormControl>
+          <Button
+            size='large'
+            variant='contained'
+            sx={{ marginBottom: 4 }}
+            onClick={handleCloser}
+            style={{ backgroundColor: '#0070D2', color: 'white' }}
+          >
+            Submit
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+    
+  </Box>
+  )
+}
 
+const FormLayoutsSeparator = () => {
+  
+  const[rowData,setRowData]=useState([]);
+  const theme = useTheme();
+
+  const [selectedOptions, setSelectedOptions] = useState([]);
+  const projectNameRef = useRef(null);
+  const projectDescriptionRef = useRef(null);
+  const gitHubRepoRef = useRef(null);
+  const[recentProject,setRecentProject]=useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const[showModel,setShowModel]=useState(false);
+  const[modelFormData,setModelFormData]=useState({}); 
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false); // Step 2
+  const[accessToken,setAccessToken]=useState(''); 
+
+  const [urls, setUrls] = useState([]);
+  const[urlInput,setUrlInput]=useState('')
+  const[loggedUserData,setLoggedUserData]=useState('')
+
+  const handleUrlChange = (event) => {
+    const value = event.target.value;
+    setUrlInput(value);
+    if (value.endsWith(' ')) {
+      // Clear TextField when space is entered
+      setUrlInput('');
+    }
+  };
+
+  const handlePaste = (event) => {
+    const pastedUrl = event.clipboardData.getData('text');
+    if (urlInput.trim() !== '') {
+      // Clear the TextField if there's a space before pasting a new URL
+      setUrlInput('');
+    }
+    if (pastedUrl.trim() !== '') {
+      setUrls([...urls, pastedUrl.trim()]);
+    }
+  };
+
+  const shortenUrl = (url) => {
+    const maxLength = 50;
+    return url.length > maxLength ? url.substr(0, maxLength) + '......' : url;
+  };
+
+  const handleDelete = (urlToDelete) => {
+    setUrls(urls.filter((url) => url !== urlToDelete));
+  };
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  const validateFields = () => {
+    // Check if all required fields are filled
+    if (
+      projectNameRef.current?.value === '' ||
+      projectDescriptionRef.current?.value === '' ||
+      selectedOptions.length === 0 ||
+      gitHubRepoRef.current?.value === ''
+    ) {
+      return false;
+    }
+    return true;
+  };
+  const handleChange = (event) => {
+    //setSelectedOptions([`${event.target.value}`]);
+    setSelectedOptions(event.target.value);
+  };
+
+  const handleRemoveOption = (option) => () => {
+   // const filteredOptions = ((selectedOption) => selectedOption !== option);
+    const filteredOptions=selectedOptions.filter((selectedOption)=>selectedOption!==option) 
+   setSelectedOptions(filteredOptions);
+  };
+
+  const handleChipClick = (event) => {
+    event.stopPropagation();
+  };
+ 
+  
+  
+  const handleBuildRAG = async() => {
+    if (!validateFields()) {
+      return;
+    }
+     
+      const contextDatas = localStorage.getItem('contextData');
+      if (contextDatas) {
+        const parsedData = JSON.parse(contextDatas);
+        setLoggedUserData(parsedData.user.userId);
+      }
+
+    const formData={
+      name:projectNameRef.current.value,
+      description:projectDescriptionRef.current.value,
+      languages:selectedOptions,
+      //url:gitHubRepoRef.current.value,
+      url:urls,
+      user_id:loggedUserData,
+    };
+    setModelFormData(formData)
+    setShowModel(true);
+
+  };
+
+  const handleCloseModel=()=>{
+    setShowModel(false);
+  }
+  
+    const fetchRowData=async()=>{
+      try{
+        //const resposne=await fetch("http://localhost:8080/projects")
+        //const resposne=await fetch("/software/csws/rag/projects")
+
+        fetch("/software/csws/rag/projects",{
+        //fetch("http://localhost:8080/projects",{
+          method:'GET',
+          headers:{
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'application/json'
+    
+          }
+        })
+        .then(response=>response.json())
+        .then(data=>setRecentProject(data.sort((a,b)=>new Date(b.created_on)-new Date(a.created_on)).slice(0,3)))
+        .catch(error=>console.log("Error in data fetch ",error));
+
+        /*
+        .then(data=>setData(data)) 
+        if(!resposne.ok){
+          throw new Error("Failed to fetch data");
         }
-        window.addEventListener('message', handleMessage);
+        const data=await resposne.json(); */
+        
+      }catch{
+        console.error("Error while fetching recent projects....");
+      }
+    };
+  useEffect(()=>{
+    fetchRowData();
+  },[])
+
+  const handleChanger = (event) => {
+    const inputValue = event.target.value;
+    if (/\s/.test(inputValue)) {
+      setError('Project name with spaces is not allowed');
+    } else {
+      setError('');
+    }
+  };
+  return (
+ 
+    <>
+    <Card  sx={{padding:'25px', position:"relative"}}>
+      
+      <CardHeader title={loading? `RAG building in process`:`New Project`} titleTypographyProps={{ variant: 'h6' }}sx={{ marginLeft: '20px' }}/>
+        {
+          loading?(
+            <Box sx={{ width: '100%' }}>
+        <LinearProgress />
+        </Box>
+          ):(null)
+        }
+        <Divider sx={{ margin: 0 }} />
+      
+      <form onSubmit={e => e.preventDefault()}>
+        <CardContent style={{ filter: loading || showModel? 'blur(4px)' : 'none'}}>
+        <Grid container spacing={7}>
+          <Grid item xs={6} sm={12}>
+            <TextField 
+               sx={{ width: '90%', marginLeft: '20px',
+               '& .MuiFormLabel-root': {
+                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
+              },
+              '& .MuiInputLabel-asterisk': {
+                color: 'red', // Change the color of the asterisk here
+              }  
+            }}
+              required 
+              id="outlined-required" 
+              label="Project Name" 
+              placeholder="Please enter project name.."
+              autoComplete="off"
+              inputRef={projectNameRef}
+              onChange={handleChanger}
+              error={Boolean(error)}
+              helperText={error}
+            />
+          </Grid>
+          <Grid item xs={6} sm={12}>
+          <TextField 
+              sx={{ width: '90%', marginLeft: '20px' ,
+              '& .MuiFormLabel-root': {
+                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
+              },
+              '& .MuiInputLabel-asterisk': {
+                color: 'red', // Change the color of the asterisk here
+              }
+             }}
+              required 
+              id="outlined-error-helper-text"
+              label="Project Description" 
+              placeholder="Please enter project description.."
+              autoComplete="off"
+              inputRef={projectDescriptionRef}
+            />
+          </Grid>
+          <Grid item xs={6} sm={12}>
+              <InputLabel id="multi-select-label"
+              sx={{ width: '90%', marginLeft: '20px',
+              '& .MuiFormLabel-root': {
+                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
+              } ,
+              
+             }}
+              >Please select correct technology<span style={{ color: 'red' }}>*</span></InputLabel>
+              <Select
+                  sx={{ width: '90%', marginLeft: '20px' }}
+                  labelId="multi-select-label"
+                  id="multi-select"
+                  multiple
+                  value={selectedOptions}
+                  onChange={handleChange}
+                  inputProps={{ 'aria-label': 'Select multiple options' }}
+                  renderValue={(selected) => (
+                    <div>
+                      {selected.map((value) => (
+                        <Chip
+                          key={value}
+                          label={value}
+                          onDelete={handleRemoveOption(value)}
+                          onMouseDown={handleChipClick} // Prevent the select box from opening when clicking on the chip button
+                          sx={{
+                            color: theme.palette.mode === 'dark' ? 'white' : 'black', // Chip label color
+                            backgroundColor: theme.palette.mode === 'dark' ? 'rgb(207 207 207 / 17%)' : 'white', // Chip background color
+                            border: `1px solid ${theme.palette.mode === 'dark' ? 'white' : 'rgb(207 207 207 / 87%)'}`, // Chip border color,
+                            fontSize: '0.9rem',
+                            marginLeft:'10px',
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                >
+                  
+                  <MenuItem value="Java">Java</MenuItem>
+                  <MenuItem value="Python">Python</MenuItem>
+                  <MenuItem value="TypeScript">TypeScript</MenuItem>
+                  <MenuItem value="Go-lang">Go-lang</MenuItem>
+                  <MenuItem value="C++">C++</MenuItem>
+                  {/* Add more MenuItem components for additional options */}
+                </Select>
+
+          </Grid>
+          <Grid item xs={6} sm={12} sx={{display:'flex',flexDirection:'column'}}>
+                <TextField 
+                sx={{ width: '90%', marginLeft: '20px',
+                '& .MuiFormLabel-root': {
+                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
+                },
+                '& .MuiInputLabel-asterisk': {
+                color: 'red', // Change the color of the asterisk here
+                }
+                }}
+                required 
+                id="outlined-error-helper-text"
+                label="Git Repo" 
+                placeholder="Enter your Git repo URL here.."
+                autoComplete="off"
+                inputRef={gitHubRepoRef}
+                value={urlInput}
+                onChange={handleUrlChange}
+                onPaste={handlePaste}
+                />
+
+                <Typography variant="body4" 
+                style={{ color: '#d27070', marginLeft: '20px', marginTop: '5px',fontSize:'0.7rem' }}>
+                Kindly do not clone any project related to Blockchain or Cryptography
+                </Typography>
+  
+          </Grid>
+          {urls.length > 0 && (
+          <Grid item xs={12}>
+            <Stack 
+              direction="row" 
+              spacing={1} 
+              marginTop={-5} 
+              sx={{ 
+                width: '90%', // Ensures Stack has the same width as TextField
+                marginLeft: '20px', // Matches TextField's left margin
+                flexWrap: 'wrap', 
+                gap: 1, 
+                padding: 1, 
+                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.7)', 
+                backdropFilter: 'blur(10px)', 
+                borderRadius: -5,
+                border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(255, 255, 255, 0.18)', 
+              }}
+            >
+              {urls.map((url, index) => (
+                <Chip 
+                  key={index} 
+                  label={shortenUrl(url)} 
+                  onDelete={() => handleDelete(url)}
+                  sx={{ 
+                    margin: '4px', 
+                    backgroundColor: theme.palette.mode === 'dark' ? '#424242' : '#eae5e5', 
+                    color: theme.palette.text.primary,
+                    '& .MuiChip-label': { 
+                    } 
+                  }}
+                />
+              ))}
+            </Stack>
+          </Grid>
+        )}
+        </Grid>
+
+        <CardActions>
+          <Button size='large'
+           type='submit' 
+           onClick={handleBuildRAG} 
+           sx={{ ml: 0 }} 
+           variant='contained'
+           style={{ backgroundColor: '#0070D2', color: 'white' }}
+           >
+            Build RAG
+          </Button>
+          
        
+        </CardActions>
+        </CardContent>
+      
+      </form>
+      {showModel &&(
+            <CustomModel onClose={handleCloseModel} setLoading={setLoading}
+            formData={modelFormData} setSelectedOptions={setSelectedOptions}
+            setSnackbarMessage={setSnackbarMessage} setSnackbarOpen={setSnackbarOpen}
+            fetchRowData={fetchRowData} projectNameRef={projectNameRef}
+            projectDescriptionRef={projectDescriptionRef} gitHubRepoRef={gitHubRepoRef}
+            setUrls={setUrls}/>
+          )}
+    </Card>
+    <CustomSnackbar
+        open={snackbarOpen}
+        message={snackbarMessage}
+        onClose={handleSnackbarClose}
+      />
+
+      {/* Add a backdrop for background blur */}
+      <Backdrop
+        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={snackbarOpen}
+      />
+    <StickyHeaderCard sx={{mt:2,height: '50vh',overflowY: 'auto',padding:'25px'}}>
+      
+     <StickyHeader title="Recent created projects.." titleTypographyProps={{ variant: 'h6' }}sx={{ marginLeft: '20px' }}/>
+     <Divider sx={{ margin: 0 }} />
+     <TableContainer component={Paper} sx={{ paddingLeft: '25px', paddingRight: '25px' }}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold',width: '400px',textAlign: 'left'  }}>
+              Project Name & Description
+              </TableCell>
+            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold',textAlign: 'left'  }}>Technologies</TableCell>
+            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold' ,width: '200px', whiteSpace: 'nowrap',textAlign: 'left' }}>Created On</TableCell>
+            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold' ,width: '200px', whiteSpace: 'nowrap',textAlign: 'left' }}>Created By</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {recentProject.map((row) => (
+            <TableRow key={row.id}>
+              <StickyTableCell style={{ fontSize: '15px' }}>{row.name}
+              <p style={{fontSize:'12px'}}>{row.description}</p></StickyTableCell>
+              <TableCell>
+                  <TechBox>
+                    {row.languages.join(' | ')}
+                  </TechBox>
+                </TableCell>
+              <TableCell>{row.created_on}</TableCell>
+              <TableCell>{row.created_by}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+    </StickyHeaderCard>
+    </>
+     
+  )
+}
+
+export default FormLayoutsSeparator
