@@ -11,7 +11,6 @@ import Radio from '@mui/material/Radio';
 import Divider from '@mui/material/Divider';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
-import Collapse from '@mui/material/Collapse';
 import Typography from '@mui/material/Typography';
 import TableSortLabel from '@mui/material/TableSortLabel';
 import TextField from '@mui/material/TextField';
@@ -23,7 +22,7 @@ import SendIcon from 'mdi-material-ui/Send';
 import Box from '@mui/material/Box';
 import { useRouter } from 'next/router';
 import useAccessToken from 'src/fetchtoken/AccessToken';
-import DeleteForever from 'mdi-material-ui/DeleteForever'
+import DeleteForever from 'mdi-material-ui/DeleteForever';
 import { IconButton } from '@mui/material';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -54,16 +53,11 @@ const TechBox = styled(Box)({
 });
 
 const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
-  const [open, setOpen] = useState(false);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState({});
   const [deleteInProgress, setDeleteInProgress] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState('');
-
-  const handleToggle = () => {
-    setOpen(!open);
-  };
 
   const handleDeleteIconClick = (row) => {
     setRowToDelete(row);
@@ -110,7 +104,7 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
 
   return (
     <>
-      <TableRow hover onClick={handleToggle}>
+      <TableRow hover>
         <TableCell>
           <Radio
             checked={selectedRow === row.name}
@@ -138,13 +132,6 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
               <DeleteForever sx={{ fontSize: "25px", color: "#fe5768", width: "20px" }} />
             </IconButton>
           </div>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Typography>{row.name}</Typography>
-          </Collapse>
         </TableCell>
       </TableRow>
 
