@@ -58,7 +58,6 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
   const [deleteInProgress, setDeleteInProgress] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState('');
-  const [deleteError, setDeleteError] = useState('');
 
   const handleDeleteIconClick = (row) => {
     setRowToDelete(row);
@@ -76,9 +75,8 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
 
   const handleConfirmDelete = async () => {
     setDeleteInProgress(true);
-    setDeleteError(''); // Reset error message
     try {
-      const response = await fetch("http://localhost:8080/delete", {
+      await fetch("http://localhost:8080/delete", {
         method: 'DELETE',
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -86,29 +84,22 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
         },
         body: JSON.stringify({ id: rowToDelete.id, name: rowToDelete.name, userId: deleteUserId }),
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setDeleteError(errorData.message || 'Failed to delete the project.');
-      } else {
-        setDeleteSuccess(true);
-        fetchData();
-        const selectedProject = JSON.parse(sessionStorage.getItem('selectedRowData'));
-        if (selectedProject.name === rowToDelete.name) {
-          sessionStorage.removeItem('selectedRowData');
-        }
+      setDeleteInProgress(false);
+      setDeleteSuccess(true);
+      fetchData();
+      const selectedProject = JSON.parse(sessionStorage.getItem('selectedRowData'));
+      if (selectedProject.name === rowToDelete.name) {
+        sessionStorage.removeItem('selectedRowData');
       }
     } catch (error) {
-      setDeleteError('Failed to delete the project. Please try again later.');
+      setDeleteInProgress(false);
       console.error(error);
     }
-    setDeleteInProgress(false);
   };
 
   const handleCloseDeleteDialog = () => {
     setDeleteConfirmationOpen(false);
     setDeleteSuccess(false);
-    setDeleteError('');
   };
 
   return (
@@ -156,11 +147,6 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
                 <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
                   <CircularProgress />
                 </div>
-              )}
-              {deleteError && (
-                <Typography color="error" sx={{ marginTop: '16px' }}>
-                  {deleteError}
-                </Typography>
               )}
             </>
           )}
@@ -233,6 +219,15 @@ const TableStickyHeader = () => {
     setOrderBy(property);
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
   const handleRadioChange = (name) => {
     setSelectedRow(name);
   };
@@ -240,6 +235,24 @@ const TableStickyHeader = () => {
   const handleSearchChange = (event) => {
     setSearchQuery(event.target.value);
   };
+
+  const handleSendMessage = () => {
+    if (userMessage.trim() !== '') {
+      setChatMessages([...chatMessages, { message: userMessage, isUser: true }]);
+      setUserMessage('');
+      // You can add logic here to handle AI response and update chatMessages accordingly
+    }
+  };
+
+  const filteredData = data.filter(
+    (row) =>
+      row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.languages.join(' ').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.created_on.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.created_by.toString().toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedData = filteredData.sort((a, b) => new Date(b.created_on) - new Date(a.created_on));
 
   const handleSelectProject = () => {
     const selectedRowData = data.find((row) => row.name === selectedRow);
@@ -253,20 +266,6 @@ const TableStickyHeader = () => {
     '& .MuiTableSortLabel-icon': {
       opacity: 1,
     },
-  });
-
-  const filteredData = data.filter(
-    (row) =>
-      row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.languages.join(' ').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.created_on.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.created_by.toString().toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const sortedData = filteredData.sort((a, b) => {
-    const dateA = new Date(a.created_on);
-    const dateB = new Date(b.created_on);
-    return order === 'asc' ? dateA - dateB : dateB - dateA;
   });
 
   return (
@@ -315,7 +314,7 @@ const TableStickyHeader = () => {
           <TableBody>
             {sortedData
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => (
+              .map((row, idx) => (
                 <CollapsibleRow
                   key={row.id}
                   row={row}
@@ -333,8 +332,8 @@ const TableStickyHeader = () => {
         count={filteredData.length}
         rowsPerPage={rowsPerPage}
         page={page}
-        onPageChange={(event, newPage) => setPage(newPage)}
-        onRowsPerPageChange={(event) => setRowsPerPage(parseInt(event.target.value, 10))}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
       />
       <Divider sx={{ margin: 0 }} />
       <CardActions>
