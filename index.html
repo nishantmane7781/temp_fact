@@ -18,7 +18,6 @@ import { styled } from '@mui/material/styles';
 import Grid from '@mui/material/Grid';
 import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from 'mdi-material-ui/Magnify';
-import SendIcon from 'mdi-material-ui/Send';
 import Box from '@mui/material/Box';
 import { useRouter } from 'next/router';
 import useAccessToken from 'src/fetchtoken/AccessToken';
@@ -58,6 +57,7 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
   const [deleteInProgress, setDeleteInProgress] = useState(false);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState('');
+  const [deleteError, setDeleteError] = useState('');
 
   const handleDeleteIconClick = (row) => {
     setRowToDelete(row);
@@ -69,14 +69,14 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
     if (contextDatas) {
       const parsedData = JSON.parse(contextDatas);
       setDeleteUserId(parsedData.user.userId);
-      console.log("I am from TablestickyHeader----- ", parsedData);
     }
   }, []);
 
   const handleConfirmDelete = async () => {
     setDeleteInProgress(true);
+    setDeleteError(''); // Reset error message
     try {
-      await fetch("http://localhost:8080/delete", {
+      const response = await fetch("http://localhost:8080/delete", {
         method: 'DELETE',
         headers: {
           'Access-Control-Allow-Origin': '*',
@@ -84,22 +84,29 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
         },
         body: JSON.stringify({ id: rowToDelete.id, name: rowToDelete.name, userId: deleteUserId }),
       });
-      setDeleteInProgress(false);
-      setDeleteSuccess(true);
-      fetchData();
-      const selectedProject = JSON.parse(sessionStorage.getItem('selectedRowData'));
-      if (selectedProject.name === rowToDelete.name) {
-        sessionStorage.removeItem('selectedRowData');
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        setDeleteError(errorData.message || 'Failed to delete the project.');
+      } else {
+        setDeleteSuccess(true);
+        fetchData();
+        const selectedProject = JSON.parse(sessionStorage.getItem('selectedRowData'));
+        if (selectedProject.name === rowToDelete.name) {
+          sessionStorage.removeItem('selectedRowData');
+        }
       }
     } catch (error) {
-      setDeleteInProgress(false);
+      setDeleteError('Failed to delete the project. Please try again later.');
       console.error(error);
     }
+    setDeleteInProgress(false);
   };
 
   const handleCloseDeleteDialog = () => {
     setDeleteConfirmationOpen(false);
     setDeleteSuccess(false);
+    setDeleteError('');
   };
 
   return (
@@ -148,6 +155,11 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
                   <CircularProgress />
                 </div>
               )}
+              {deleteError && (
+                <Typography color="error" sx={{ marginTop: '16px' }}>
+                  {deleteError}
+                </Typography>
+              )}
             </>
           )}
         </DialogContent>
@@ -163,6 +175,11 @@ const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
             </>
           )}
           {deleteSuccess && (
+            <Button onClick={handleCloseDeleteDialog} color="primary">
+              Close
+            </Button>
+          )}
+          {deleteError && !deleteSuccess && (
             <Button onClick={handleCloseDeleteDialog} color="primary">
               Close
             </Button>
@@ -214,17 +231,21 @@ const TableStickyHeader = () => {
   }, []);
 
   const handleRequestSort = (property) => {
-    const isAsc = orderBy === property && order === 'asc';
-    setOrder(isAsc ? 'desc' : 'asc');
+    const isAscending = orderBy === property && order === 'asc';
+    setOrder(isAscending ? 'desc' : 'asc');
     setOrderBy(property);
   };
 
-  const handleChangePage = (event, newPage) => {
+  const handleSearch = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handlePageChange = (event, newPage) => {
     setPage(newPage);
   };
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(+event.target.value);
+  const handleRowsPerPageChange = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
@@ -232,129 +253,103 @@ const TableStickyHeader = () => {
     setSelectedRow(name);
   };
 
-  const handleSearchChange = (event) => {
-    setSearchQuery(event.target.value);
+  const handleUserMessageChange = (event) => {
+    setUserMessage(event.target.value);
   };
 
   const handleSendMessage = () => {
-    if (userMessage.trim() !== '') {
-      setChatMessages([...chatMessages, { message: userMessage, isUser: true }]);
-      setUserMessage('');
-      // You can add logic here to handle AI response and update chatMessages accordingly
-    }
+    setChatMessages([...chatMessages, { message: userMessage, isUser: true }]);
+    setUserMessage('');
   };
-
-  const filteredData = data.filter(
-    (row) =>
-      row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.languages.join(' ').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.created_on.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
-      row.created_by.toString().toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const sortedData = filteredData.sort((a, b) => new Date(b.created_on) - new Date(a.created_on));
-
-  const handleSelectProject = () => {
-    const selectedRowData = data.find((row) => row.name === selectedRow);
-    localStorage.removeItem('chatMessages');
-    sessionStorage.removeItem('selectedRowData');
-    sessionStorage.setItem('selectedRowData', JSON.stringify(selectedRowData));
-    router.push('/account-settings');
-  };
-
-  const CustomTableSortLabel = styled(TableSortLabel)({
-    '& .MuiTableSortLabel-icon': {
-      opacity: 1,
-    },
-  });
 
   return (
-    <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-      <Grid container alignItems="center" justifyContent="flex-end" padding={3}>
-        <Grid item xs={4}>
+    <Box>
+      <Grid container spacing={2}>
+        <Grid item xs={12}>
           <TextField
-            type="text"
-            placeholder="Search..."
+            fullWidth
+            label="Search"
             value={searchQuery}
-            onChange={handleSearchChange}
-            size="small"
-            sx={{ width: '90%' }}
+            onChange={handleSearch}
             InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
+              endAdornment: (
+                <InputAdornment position="end">
                   <SearchIcon />
                 </InputAdornment>
               ),
             }}
           />
         </Grid>
-      </Grid>
-
-      <TableContainer sx={{ maxHeight: 440 }}>
-        <Table stickyHeader aria-label="sticky table">
-          <TableHead>
-            <TableRow>
-              {columns.map((column, index) => (
-                <BlueTableCell key={column.id} align={column.align} sx={{ minWidth: column.minWidth }}>
-                  {index === 0 ? (
-                    <div />
-                  ) : (
-                    <CustomTableSortLabel
-                      active={orderBy === column.id}
-                      direction={orderBy === column.id ? order : 'asc'}
-                      onClick={() => handleRequestSort(column.id)}
-                    >
-                      {column.label}
-                    </CustomTableSortLabel>
-                  )}
-                </BlueTableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {sortedData
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row, idx) => (
-                <CollapsibleRow
-                  key={row.id}
-                  row={row}
-                  selectedRow={selectedRow}
-                  handleRadioChange={handleRadioChange}
-                  fetchData={fetchData}
-                />
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25, 100]}
-        component="div"
-        count={filteredData.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-      <Divider sx={{ margin: 0 }} />
-      <CardActions>
-        <Grid container justifyContent="flex-end">
-          <Button
-            size="medium"
-            type="submit"
-            variant="contained"
-            style={{
-              ...(!selectedRow
-                ? { backgroundColor: '#72b6f2', color: '#FFFFFF', marginRight: '4%', cursor: 'not-allowed' }
-                : { backgroundColor: '#0070D2', color: 'white', marginRight: '4%', cursor: 'pointer' })
-            }}
-            onClick={handleSelectProject}
-            disabled={!selectedRow}
-          >
-            Select Project
-          </Button>
+        <Grid item xs={12}>
+          <Paper>
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {columns.map((column) => (
+                      <TableCell
+                        key={column.id}
+                        sortDirection={orderBy === column.id ? order : false}
+                      >
+                        <TableSortLabel
+                          active={orderBy === column.id}
+                          direction={orderBy === column.id ? order : 'asc'}
+                          onClick={() => handleRequestSort(column.id)}
+                        >
+                          {column.label}
+                        </TableSortLabel>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {data
+                    .filter(row => row.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .sort((a, b) => {
+                      if (order === 'asc') {
+                        return a[orderBy] < b[orderBy] ? -1 : 1;
+                      } else {
+                        return a[orderBy] > b[orderBy] ? -1 : 1;
+                      }
+                    })
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((row) => (
+                      <CollapsibleRow
+                        key={row.id}
+                        row={row}
+                        selectedRow={selectedRow}
+                        handleRadioChange={handleRadioChange}
+                        fetchData={fetchData}
+                      />
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[10, 25, 50]}
+              component="div"
+              count={data.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handlePageChange}
+              onRowsPerPageChange={handleRowsPerPageChange}
+            />
+          </Paper>
         </Grid>
-      </CardActions>
-    </Paper>
+      </Grid>
+      <div style={{ marginTop: '20px' }}>
+        {chatMessages.map((chat, index) => (
+          <ChatMessage key={index} message={chat.message} isUser={chat.isUser} />
+        ))}
+        <TextField
+          fullWidth
+          label="Type your message here..."
+          value={userMessage}
+          onChange={handleUserMessageChange}
+          onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+        />
+      </div>
+    </Box>
   );
 };
 
