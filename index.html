@@ -244,13 +244,13 @@ const TableStickyHeader = () => {
     }
   };
 
-  const filteredData = Array.isArray(data) ? data.filter(
+  const filteredData = data.filter(
     (row) =>
       row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       row.languages.join(' ').toLowerCase().includes(searchQuery.toLowerCase()) ||
       row.created_on.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
       row.created_by.toString().toLowerCase().includes(searchQuery.toLowerCase())
-  ) : [];
+  );
 
   const sortedData = filteredData.sort((a, b) => new Date(b.created_on) - new Date(a.created_on));
 
