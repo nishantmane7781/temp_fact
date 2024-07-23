@@ -1,642 +1,374 @@
-// ** React Imports
-import { forwardRef, useState,useRef ,useEffect} from 'react'
-
-// ** MUI Imports
-import Card from '@mui/material/Card'
-import Grid from '@mui/material/Grid'
-import Button from '@mui/material/Button'
-import Divider from '@mui/material/Divider'
-import MenuItem from '@mui/material/MenuItem'
-import TextField from '@mui/material/TextField'
-import CardHeader from '@mui/material/CardHeader'
-import InputLabel from '@mui/material/InputLabel'
-import FormControl from '@mui/material/FormControl'
-import Typography from '@mui/material/Typography'
-import CardContent from '@mui/material/CardContent'
-import CardActions from '@mui/material/CardActions'
-import OutlinedInput from '@mui/material/OutlinedInput'
-import InputAdornment from '@mui/material/InputAdornment'
-import Select from '@mui/material/Select';
-import Chip from '@mui/material/Chip';
-import LinearProgress from '@mui/material/LinearProgress'; // Import LinearProgress
-import Box from '@mui/material/Box';
-import TableContainer from '@mui/material/TableContainer'
-import { useTheme } from '@mui/material/styles';
-import { styled } from '@mui/material/styles';
+import React, { useEffect, useState } from 'react';
+import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
-import Snackbar from '@mui/material/Snackbar';
-import MuiAlert from '@mui/material/Alert';
-import Backdrop from '@mui/material/Backdrop';
-import IconButton from '@mui/material/IconButton'
-import { Stack } from '@mui/material'
+import TablePagination from '@mui/material/TablePagination';
+import Radio from '@mui/material/Radio';
+import Divider from '@mui/material/Divider';
+import CardActions from '@mui/material/CardActions';
+import Button from '@mui/material/Button';
+import Collapse from '@mui/material/Collapse';
+import Typography from '@mui/material/Typography';
+import TableSortLabel from '@mui/material/TableSortLabel';
+import TextField from '@mui/material/TextField';
+import { styled } from '@mui/material/styles';
+import Grid from '@mui/material/Grid';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from 'mdi-material-ui/Magnify';
+import SendIcon from 'mdi-material-ui/Send';
+import Box from '@mui/material/Box';
+import { useRouter } from 'next/router';
+import useAccessToken from 'src/fetchtoken/AccessToken';
+import DeleteForever from 'mdi-material-ui/DeleteForever'
+import { IconButton } from '@mui/material';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import CircularProgress from '@mui/material/CircularProgress';
 
+const columns = [
+  { id: 'radio', label: '', minWidth: 2 },
+  { id: 'name', label: 'Project Name & Description', minWidth: 110, wordWrap: 'break-word' },
+  { id: 'tech', label: 'Technologies', minWidth: 80, wordWrap: 'break-word' },
+  { id: 'description', label: 'Created Date', minWidth: 90, align: 'left', wordWrap: 'break-word' },
+  { id: 'crdate', label: 'Created By', minWidth: 90, align: 'left', wordWrap: 'break-word' },
+];
 
-const CustomInput = forwardRef((props, ref) => {
-  return <TextField fullWidth {...props} inputRef={ref} label='Birth Date' autoComplete='off' />
-})
-
-
-const StickyHeaderCard = styled(Card)({
-  overflowY: 'auto',
-  position: 'relative',
+const BlueTableCell = styled(TableCell)({
+  color: '#0070D2',
+  fontSize: '12px !important',
+  fontWeight: 'bold',
 });
 
-const StickyHeader = styled(CardHeader)({
-  //position: 'sticky',
-  top: 0,
-  zIndex: 1000, // Adjust the z-index as needed
- 
-});
-
-const StickyTableCell = styled(TableCell)({
-  position: 'sticky',
-  left: 0,
-  zIndex: 1000, // Adjust the z-index as needed
- 
-});
 const TechBox = styled(Box)({
   display: 'inline-block',
-  padding: '4px 8px', // Adjust padding as needed
-  marginRight: '8px', // Adjust margin as needed
-  border: '1px solid #ccc', // Add border
-  borderRadius: '4px', // Add border radius
+  padding: '4px 8px',
+  marginRight: '8px',
+  border: '1px solid #ccc',
+  borderRadius: '4px',
 });
- const handleMouseDownPassword = event => {
-  event.preventDefault()
-}
 
-// toast message 
-const CustomSnackbar = ({ open, message, onClose }) => {
+const CollapsibleRow = ({ row, selectedRow, handleRadioChange, fetchData }) => {
+  const [open, setOpen] = useState(false);
+  const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState({});
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState('');
+
+  const handleToggle = () => {
+    setOpen(!open);
+  };
+
+  const handleDeleteIconClick = (row) => {
+    setRowToDelete(row);
+    setDeleteConfirmationOpen(true);
+  };
+
+  useEffect(() => {
+    const contextDatas = localStorage.getItem('contextData');
+    if (contextDatas) {
+      const parsedData = JSON.parse(contextDatas);
+      setDeleteUserId(parsedData.user.userId);
+      console.log("I am from TablestickyHeader----- ", parsedData);
+    }
+  }, []);
+
+  const handleConfirmDelete = async () => {
+    setDeleteInProgress(true);
+    try {
+      await fetch("http://localhost:8080/delete", {
+        method: 'DELETE',
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: rowToDelete.id, name: rowToDelete.name, userId: deleteUserId }),
+      });
+      setDeleteInProgress(false);
+      setDeleteSuccess(true);
+      fetchData();
+      const selectedProject = JSON.parse(sessionStorage.getItem('selectedRowData'));
+      if (selectedProject.name === rowToDelete.name) {
+        sessionStorage.removeItem('selectedRowData');
+      }
+    } catch (error) {
+      setDeleteInProgress(false);
+      console.error(error);
+    }
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setDeleteConfirmationOpen(false);
+    setDeleteSuccess(false);
+  };
+
   return (
-    <Snackbar
-      open={open}
-      autoHideDuration={600000}
-      onClose={onClose}
-      anchorOrigin={{ vertical: 'center', horizontal: 'center' }} // Align Snackbar to the center
-     
-      style={{ position: 'fixed', 
-      top: '50%', left: '50%',
-      transform: 'translate(-50%, -50%)',
-      backdropFilter: 'blur(8px)',
-      height:'100px',
-      fontSize:'30px' }} // Center the Snackbar
-    >
-      <MuiAlert
-        onClose={onClose}
-        severity="success"
-        sx={{
-          width: 'fit-content',
-          backgroundColor: 'rgba(255, 255, 255, 0.8)', // Set translucent white background color
-          color: 'black', // Set black text color
-          borderRadius: '8px', // Add border radius
+    <>
+      <TableRow hover onClick={handleToggle}>
+        <TableCell>
+          <Radio
+            checked={selectedRow === row.name}
+            onChange={() => handleRadioChange(row.name)}
+          />
+        </TableCell>
+        <TableCell style={{ fontSize: '12px' }}>
+          {row.name}
+          <p style={{ fontSize: '10px', width: '350px' }}>{row.description}</p>
+        </TableCell>
+        <TableCell>
+          <TechBox>
+            {row.languages.join(' | ')}
+          </TechBox>
+        </TableCell>
+        <TableCell>{row.created_on}</TableCell>
+        <TableCell>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span>{row.created_by}</span>
+            <IconButton
+              aria-label="delete"
+              onClick={() => handleDeleteIconClick(row)}
+              sx={{ marginLeft: '5%' }}
+            >
+              <DeleteForever sx={{ fontSize: "25px", color: "#fe5768", width: "20px" }} />
+            </IconButton>
+          </div>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Typography>{row.name}</Typography>
+          </Collapse>
+        </TableCell>
+      </TableRow>
 
-        }}
-      >
-        {message}
-      </MuiAlert>
-
-    </Snackbar>
+      <Dialog open={deleteConfirmationOpen} onClose={handleCloseDeleteDialog}>
+        <DialogTitle>Confirm Deletion</DialogTitle>
+        <DialogContent>
+          {deleteSuccess ? (
+            <Typography>Successfully deleted {rowToDelete.name}</Typography>
+          ) : (
+            <>
+              <Typography>Are you sure you want to delete {rowToDelete.name}?</Typography>
+              {deleteInProgress && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+                  <CircularProgress />
+                </div>
+              )}
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {!deleteSuccess && !deleteInProgress && (
+            <>
+              <Button onClick={handleCloseDeleteDialog} color="primary">
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmDelete} color="primary">
+                Confirm
+              </Button>
+            </>
+          )}
+          {deleteSuccess && (
+            <Button onClick={handleCloseDeleteDialog} color="primary">
+              Close
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };
 
-{/**---- model form */}
-const CustomModel= ({onClose,setLoading,formData,setSelectedOptions,
-  setSnackbarMessage,setSnackbarOpen,fetchRowData,projectNameRef,
-  projectDescriptionRef,gitHubRepoRef,setUrls})=>{
+const ChatMessage = ({ message, isUser }) => (
+  <div style={{ textAlign: isUser ? 'right' : 'left', margin: '10px 0' }}>
+    <Typography variant="body1" style={{ backgroundColor: isUser ? '#0070D2' : '#F5F5F5', color: isUser ? 'white' : 'black', padding: '10px', borderRadius: '10px', display: 'inline-block' }}>
+      {message}
+    </Typography>
+  </div>
+);
 
-    const username = useRef(null);
-    const pass = useRef(null);
+const TableStickyHeader = () => {
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [order, setOrder] = useState('desc');
+  const [orderBy, setOrderBy] = useState('description');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+  const [userMessage, setUserMessage] = useState('');
+  const [data, setData] = useState([]);
+  const router = useRouter();
 
-  const handleCloser=async()=>{
-      const userdata={
-      username:username.current.value,
-      pass:pass.current.value,
-    };
-
-    setLoading(true);
-
-    try{
-        //const rse=await fetch("http://localhost:8080/submit_credentials",{
-        const rse=await fetch("/software/csws/rag/submit_credentials",{
-        method:'POST',
-        headers:{
+  const fetchData = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/projects", {
+        method: 'GET',
+        headers: {
           'Access-Control-Allow-Origin': '*',
-          'Content-Type':'application/json'
-        },
-        body:JSON.stringify(userdata),
-      });
-    }catch(error){
-      console.log("Error while sending form data ",error)
-    }
-
-    onClose();
-
-    ///---------------------------------------------------------------
-    try{
-      //const response=await fetch("http://localhost:8080/clone",{
-      const response=await fetch("/software/csws/rag/clone",{
-      method:'POST',
-        headers:{
-          'Access-Control-Allow-Origin': '*',
-          'Content-Type':'application/json'
-        },
-        body:JSON.stringify(formData),
-      });
-  
-
-    const res=await response.json();
-
-    projectNameRef.current.value = '';
-    projectDescriptionRef.current.value = '';
-    gitHubRepoRef.current.value = '';
-    setSelectedOptions([]);
-    setUrls([])
-    setSnackbarMessage(res.message);
-    setSnackbarOpen(true);
-    fetchRowData();
-
-    setTimeout(() => {
-    window.location.href = '/software/ragbot/';
-    },5000); 
-      }catch(error){
-        //console.log("error on creating project",error);
-          projectNameRef.current.value = '';
-          projectDescriptionRef.current.value = '';
-          gitHubRepoRef.current.value = '';
-          setSelectedOptions([]);
-          //alert(res.message);
-          setUrls([]);
-          setSnackbarMessage(`Unable to reach backend : - ${error}`);
-          setSnackbarOpen(true);
-      }finally{
-        setLoading(false); 
-      }
-  }
-  return(
-   
-    <Box className='customeModel-open content-center'
-    sx={{
-      position:"absolute",
-      top:'50%',
-      left:'50%',
-      transform:'translate(-50%,-50%)'  
-        }}>
-    <Card sx={{ zIndex: 1 }}>
-      <CardContent sx={{ padding: theme => `${theme.spacing(10, 9, 3)} !important` }}>
-        
-        <Box sx={{ mb: 3,display:"flex",justifyContent:"space-between"}}>
-          
-          <Typography variant='body4'>Enter code-repository details </Typography>
-          <Typography 
-          sx={{ 
-          fontWeight:"bold",
-          width:"auto",
-          color:"#ff85adde",
-          cursor:"pointer",
-          }} onClick={(e)=>onClose()}> X </Typography>
-        </Box>
-        <form autoComplete='off' onSubmit={e => e.preventDefault()}>
-          <TextField autoFocus 
-          fullWidth id='uname' 
-          label='Username' 
-          sx={{ marginBottom: 4 }}
-          inputRef={username}
-          required/>
-
-           <FormControl fullWidth sx={{ marginBottom: 4 }}>
-              <InputLabel htmlFor='auth-login-password' >Password</InputLabel>
-              <OutlinedInput
-                label='Password'
-                id='auth-login-password'
-                type='password'
-                inputRef={pass}
-                endAdornment={
-                  <InputAdornment position='end'>
-                    <IconButton
-                      edge='end'
-                      onMouseDown={handleMouseDownPassword}
-                      aria-label='toggle password visibility'
-                    >
-                    </IconButton>
-                  </InputAdornment>
-                }
-              />
-            </FormControl>
-          <Button
-            size='large'
-            variant='contained'
-            sx={{ marginBottom: 4 }}
-            onClick={handleCloser}
-            style={{ backgroundColor: '#0070D2', color: 'white' }}
-          >
-            Submit
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
-    
-  </Box>
-  )
-}
-
-const FormLayoutsSeparator = () => {
-  
-  const[rowData,setRowData]=useState([]);
-  const theme = useTheme();
-
-  const [selectedOptions, setSelectedOptions] = useState([]);
-  const projectNameRef = useRef(null);
-  const projectDescriptionRef = useRef(null);
-  const gitHubRepoRef = useRef(null);
-  const[recentProject,setRecentProject]=useState([]);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState('');
-  const[showModel,setShowModel]=useState(false);
-  const[modelFormData,setModelFormData]=useState({}); 
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false); // Step 2
-  const[accessToken,setAccessToken]=useState(''); 
-
-  const [urls, setUrls] = useState([]);
-  const[urlInput,setUrlInput]=useState('')
-  const[loggedUserData,setLoggedUserData]=useState('')
-
-  const handleUrlChange = (event) => {
-    const value = event.target.value;
-    setUrlInput(value);
-    if (value.endsWith(' ')) {
-      // Clear TextField when space is entered
-      setUrlInput('');
-    }
-  };
-
-  const handlePaste = (event) => {
-    const pastedUrl = event.clipboardData.getData('text');
-    if (urlInput.trim() !== '') {
-      // Clear the TextField if there's a space before pasting a new URL
-      setUrlInput('');
-    }
-    if (pastedUrl.trim() !== '') {
-      setUrls([...urls, pastedUrl.trim()]);
-    }
-  };
-
-  const shortenUrl = (url) => {
-    const maxLength = 50;
-    return url.length > maxLength ? url.substr(0, maxLength) + '......' : url;
-  };
-
-  const handleDelete = (urlToDelete) => {
-    setUrls(urls.filter((url) => url !== urlToDelete));
-  };
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-  };
-
-  const validateFields = () => {
-    // Check if all required fields are filled
-    if (
-      projectNameRef.current?.value === '' ||
-      projectDescriptionRef.current?.value === '' ||
-      selectedOptions.length === 0 ||
-      gitHubRepoRef.current?.value === ''
-    ) {
-      return false;
-    }
-    return true;
-  };
-  const handleChange = (event) => {
-    //setSelectedOptions([`${event.target.value}`]);
-    setSelectedOptions(event.target.value);
-  };
-
-  const handleRemoveOption = (option) => () => {
-   // const filteredOptions = ((selectedOption) => selectedOption !== option);
-    const filteredOptions=selectedOptions.filter((selectedOption)=>selectedOption!==option) 
-   setSelectedOptions(filteredOptions);
-  };
-
-  const handleChipClick = (event) => {
-    event.stopPropagation();
-  };
- 
-  
-  
-  const handleBuildRAG = async() => {
-    if (!validateFields()) {
-      return;
-    }
-     
-      const contextDatas = localStorage.getItem('contextData');
-      if (contextDatas) {
-        const parsedData = JSON.parse(contextDatas);
-        setLoggedUserData(parsedData.user.userId);
-      }
-
-    const formData={
-      name:projectNameRef.current.value,
-      description:projectDescriptionRef.current.value,
-      languages:selectedOptions,
-      //url:gitHubRepoRef.current.value,
-      url:urls,
-      user_id:loggedUserData,
-    };
-    setModelFormData(formData)
-    setShowModel(true);
-
-  };
-
-  const handleCloseModel=()=>{
-    setShowModel(false);
-  }
-  
-    const fetchRowData=async()=>{
-      try{
-        //const resposne=await fetch("http://localhost:8080/projects")
-        //const resposne=await fetch("/software/csws/rag/projects")
-
-        fetch("/software/csws/rag/projects",{
-        //fetch("http://localhost:8080/projects",{
-          method:'GET',
-          headers:{
-            'Access-Control-Allow-Origin': '*',
-            'Content-Type': 'application/json'
-    
-          }
-        })
-        .then(response=>response.json())
-        .then(data=>setRecentProject(data.sort((a,b)=>new Date(b.created_on)-new Date(a.created_on)).slice(0,3)))
-        .catch(error=>console.log("Error in data fetch ",error));
-
-        /*
-        .then(data=>setData(data)) 
-        if(!resposne.ok){
-          throw new Error("Failed to fetch data");
+          'Content-Type': 'application/json'
         }
-        const data=await resposne.json(); */
-        
-      }catch{
-        console.error("Error while fetching recent projects....");
-      }
-    };
-  useEffect(()=>{
-    fetchRowData();
-  },[])
-
-  const handleChanger = (event) => {
-    const inputValue = event.target.value;
-    if (/\s/.test(inputValue)) {
-      setError('Project name with spaces is not allowed');
-    } else {
-      setError('');
+      });
+      const result = await response.json();
+      setData(result);
+    } catch (error) {
+      console.error("Error in data fetch ", error);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleRequestSort = (property) => {
+    const isAsc = orderBy === property && order === 'asc';
+    setOrder(isAsc ? 'desc' : 'asc');
+    setOrderBy(property);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(+event.target.value);
+    setPage(0);
+  };
+
+  const handleRadioChange = (name) => {
+    setSelectedRow(name);
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleSendMessage = () => {
+    if (userMessage.trim() !== '') {
+      setChatMessages([...chatMessages, { message: userMessage, isUser: true }]);
+      setUserMessage('');
+      // You can add logic here to handle AI response and update chatMessages accordingly
+    }
+  };
+
+  const filteredData = Array.isArray(data) ? data.filter(
+    (row) =>
+      row.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.languages.join(' ').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.created_on.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
+      row.created_by.toString().toLowerCase().includes(searchQuery.toLowerCase())
+  ) : [];
+
+  const sortedData = filteredData.sort((a, b) => new Date(b.created_on) - new Date(a.created_on));
+
+  const handleSelectProject = () => {
+    const selectedRowData = data.find((row) => row.name === selectedRow);
+    localStorage.removeItem('chatMessages');
+    sessionStorage.removeItem('selectedRowData');
+    sessionStorage.setItem('selectedRowData', JSON.stringify(selectedRowData));
+    router.push('/account-settings');
+  };
+
+  const CustomTableSortLabel = styled(TableSortLabel)({
+    '& .MuiTableSortLabel-icon': {
+      opacity: 1,
+    },
+  });
+
   return (
- 
-    <>
-    <Card  sx={{padding:'25px', position:"relative"}}>
-      
-      <CardHeader title={loading? `RAG building in process`:`New Project`} titleTypographyProps={{ variant: 'h6' }}sx={{ marginLeft: '20px' }}/>
-        {
-          loading?(
-            <Box sx={{ width: '100%' }}>
-        <LinearProgress />
-        </Box>
-          ):(null)
-        }
-        <Divider sx={{ margin: 0 }} />
-      
-      <form onSubmit={e => e.preventDefault()}>
-        <CardContent style={{ filter: loading || showModel? 'blur(4px)' : 'none'}}>
-        <Grid container spacing={7}>
-          <Grid item xs={6} sm={12}>
-            <TextField 
-               sx={{ width: '90%', marginLeft: '20px',
-               '& .MuiFormLabel-root': {
-                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
-              },
-              '& .MuiInputLabel-asterisk': {
-                color: 'red', // Change the color of the asterisk here
-              }  
+    <Paper sx={{ width: '100%', overflow: 'hidden' }}>
+      <Grid container alignItems="center" justifyContent="flex-end" padding={3}>
+        <Grid item xs={4}>
+          <TextField
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            size="small"
+            sx={{ width: '90%' }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
             }}
-              required 
-              id="outlined-required" 
-              label="Project Name" 
-              placeholder="Please enter project name.."
-              autoComplete="off"
-              inputRef={projectNameRef}
-              onChange={handleChanger}
-              error={Boolean(error)}
-              helperText={error}
-            />
-          </Grid>
-          <Grid item xs={6} sm={12}>
-          <TextField 
-              sx={{ width: '90%', marginLeft: '20px' ,
-              '& .MuiFormLabel-root': {
-                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
-              },
-              '& .MuiInputLabel-asterisk': {
-                color: 'red', // Change the color of the asterisk here
-              }
-             }}
-              required 
-              id="outlined-error-helper-text"
-              label="Project Description" 
-              placeholder="Please enter project description.."
-              autoComplete="off"
-              inputRef={projectDescriptionRef}
-            />
-          </Grid>
-          <Grid item xs={6} sm={12}>
-              <InputLabel id="multi-select-label"
-              sx={{ width: '90%', marginLeft: '20px',
-              '& .MuiFormLabel-root': {
-                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
-              } ,
-              
-             }}
-              >Please select correct technology<span style={{ color: 'red' }}>*</span></InputLabel>
-              <Select
-                  sx={{ width: '90%', marginLeft: '20px' }}
-                  labelId="multi-select-label"
-                  id="multi-select"
-                  multiple
-                  value={selectedOptions}
-                  onChange={handleChange}
-                  inputProps={{ 'aria-label': 'Select multiple options' }}
-                  renderValue={(selected) => (
-                    <div>
-                      {selected.map((value) => (
-                        <Chip
-                          key={value}
-                          label={value}
-                          onDelete={handleRemoveOption(value)}
-                          onMouseDown={handleChipClick} // Prevent the select box from opening when clicking on the chip button
-                          sx={{
-                            color: theme.palette.mode === 'dark' ? 'white' : 'black', // Chip label color
-                            backgroundColor: theme.palette.mode === 'dark' ? 'rgb(207 207 207 / 17%)' : 'white', // Chip background color
-                            border: `1px solid ${theme.palette.mode === 'dark' ? 'white' : 'rgb(207 207 207 / 87%)'}`, // Chip border color,
-                            fontSize: '0.9rem',
-                            marginLeft:'10px',
-                          }}
-                        />
-                      ))}
-                    </div>
+          />
+        </Grid>
+      </Grid>
+
+      <TableContainer sx={{ maxHeight: 440 }}>
+        <Table stickyHeader aria-label="sticky table">
+          <TableHead>
+            <TableRow>
+              {columns.map((column, index) => (
+                <BlueTableCell key={column.id} align={column.align} sx={{ minWidth: column.minWidth }}>
+                  {index === 0 ? (
+                    <div />
+                  ) : (
+                    <CustomTableSortLabel
+                      active={orderBy === column.id}
+                      direction={orderBy === column.id ? order : 'asc'}
+                      onClick={() => handleRequestSort(column.id)}
+                    >
+                      {column.label}
+                    </CustomTableSortLabel>
                   )}
-                >
-                  
-                  <MenuItem value="Java">Java</MenuItem>
-                  <MenuItem value="Python">Python</MenuItem>
-                  <MenuItem value="TypeScript">TypeScript</MenuItem>
-                  <MenuItem value="Go-lang">Go-lang</MenuItem>
-                  <MenuItem value="C++">C++</MenuItem>
-                  {/* Add more MenuItem components for additional options */}
-                </Select>
-
-          </Grid>
-          <Grid item xs={6} sm={12} sx={{display:'flex',flexDirection:'column'}}>
-                <TextField 
-                sx={{ width: '90%', marginLeft: '20px',
-                '& .MuiFormLabel-root': {
-                color: theme.palette.mode === 'dark' ? 'white' : 'black', // Input label color
-                },
-                '& .MuiInputLabel-asterisk': {
-                color: 'red', // Change the color of the asterisk here
-                }
-                }}
-                required 
-                id="outlined-error-helper-text"
-                label="Git Repo" 
-                placeholder="Enter your Git repo URL here.."
-                autoComplete="off"
-                inputRef={gitHubRepoRef}
-                value={urlInput}
-                onChange={handleUrlChange}
-                onPaste={handlePaste}
-                />
-
-                <Typography variant="body4" 
-                style={{ color: '#d27070', marginLeft: '20px', marginTop: '5px',fontSize:'0.7rem' }}>
-                Kindly do not clone any project related to Blockchain or Cryptography
-                </Typography>
-  
-          </Grid>
-          {urls.length > 0 && (
-          <Grid item xs={12}>
-            <Stack 
-              direction="row" 
-              spacing={1} 
-              marginTop={-5} 
-              sx={{ 
-                width: '90%', // Ensures Stack has the same width as TextField
-                marginLeft: '20px', // Matches TextField's left margin
-                flexWrap: 'wrap', 
-                gap: 1, 
-                padding: 1, 
-                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.7)', 
-                backdropFilter: 'blur(10px)', 
-                borderRadius: -5,
-                border: theme.palette.mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(255, 255, 255, 0.18)', 
-              }}
-            >
-              {urls.map((url, index) => (
-                <Chip 
-                  key={index} 
-                  label={shortenUrl(url)} 
-                  onDelete={() => handleDelete(url)}
-                  sx={{ 
-                    margin: '4px', 
-                    backgroundColor: theme.palette.mode === 'dark' ? '#424242' : '#eae5e5', 
-                    color: theme.palette.text.primary,
-                    '& .MuiChip-label': { 
-                    } 
-                  }}
+                </BlueTableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {sortedData
+              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+              .map((row, idx) => (
+                <CollapsibleRow
+                  key={row.id}
+                  row={row}
+                  selectedRow={selectedRow}
+                  handleRadioChange={handleRadioChange}
+                  fetchData={fetchData}
                 />
               ))}
-            </Stack>
-          </Grid>
-        )}
-        </Grid>
-
-        <CardActions>
-          <Button size='large'
-           type='submit' 
-           onClick={handleBuildRAG} 
-           sx={{ ml: 0 }} 
-           variant='contained'
-           style={{ backgroundColor: '#0070D2', color: 'white' }}
-           >
-            Build RAG
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <TablePagination
+        rowsPerPageOptions={[5, 10, 25, 100]}
+        component="div"
+        count={filteredData.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+      <Divider sx={{ margin: 0 }} />
+      <CardActions>
+        <Grid container justifyContent="flex-end">
+          <Button
+            size="medium"
+            type="submit"
+            variant="contained"
+            style={{
+              ...(!selectedRow
+                ? { backgroundColor: '#72b6f2', color: '#FFFFFF', marginRight: '4%', cursor: 'not-allowed' }
+                : { backgroundColor: '#0070D2', color: 'white', marginRight: '4%', cursor: 'pointer' })
+            }}
+            onClick={handleSelectProject}
+            disabled={!selectedRow}
+          >
+            Select Project
           </Button>
-          
-       
-        </CardActions>
-        </CardContent>
-      
-      </form>
-      {showModel &&(
-            <CustomModel onClose={handleCloseModel} setLoading={setLoading}
-            formData={modelFormData} setSelectedOptions={setSelectedOptions}
-            setSnackbarMessage={setSnackbarMessage} setSnackbarOpen={setSnackbarOpen}
-            fetchRowData={fetchRowData} projectNameRef={projectNameRef}
-            projectDescriptionRef={projectDescriptionRef} gitHubRepoRef={gitHubRepoRef}
-            setUrls={setUrls}/>
-          )}
-    </Card>
-    <CustomSnackbar
-        open={snackbarOpen}
-        message={snackbarMessage}
-        onClose={handleSnackbarClose}
-      />
+        </Grid>
+      </CardActions>
+    </Paper>
+  );
+};
 
-      {/* Add a backdrop for background blur */}
-      <Backdrop
-        sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}
-        open={snackbarOpen}
-      />
-    <StickyHeaderCard sx={{mt:2,height: '50vh',overflowY: 'auto',padding:'25px'}}>
-      
-     <StickyHeader title="Recent created projects.." titleTypographyProps={{ variant: 'h6' }}sx={{ marginLeft: '20px' }}/>
-     <Divider sx={{ margin: 0 }} />
-     <TableContainer component={Paper} sx={{ paddingLeft: '25px', paddingRight: '25px' }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold',width: '400px',textAlign: 'left'  }}>
-              Project Name & Description
-              </TableCell>
-            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold',textAlign: 'left'  }}>Technologies</TableCell>
-            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold' ,width: '200px', whiteSpace: 'nowrap',textAlign: 'left' }}>Created On</TableCell>
-            <TableCell sx={{ color: '#0070D2',fontSize: '15px !important', fontWeight: 'bold' ,width: '200px', whiteSpace: 'nowrap',textAlign: 'left' }}>Created By</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {recentProject.map((row) => (
-            <TableRow key={row.id}>
-              <StickyTableCell style={{ fontSize: '15px' }}>{row.name}
-              <p style={{fontSize:'12px'}}>{row.description}</p></StickyTableCell>
-              <TableCell>
-                  <TechBox>
-                    {row.languages.join(' | ')}
-                  </TechBox>
-                </TableCell>
-              <TableCell>{row.created_on}</TableCell>
-              <TableCell>{row.created_by}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-    </StickyHeaderCard>
-    </>
-     
-  )
-}
-
-export default FormLayoutsSeparator
+export default TableStickyHeader;
